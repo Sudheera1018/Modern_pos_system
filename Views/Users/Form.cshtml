@@ -1,0 +1,56 @@
+@model UserFormViewModel
+@{
+    ViewData["Title"] = string.IsNullOrWhiteSpace(Model.Id) ? "Add User" : "Edit User";
+}
+
+<div class="modern-card p-4">
+    <div class="section-header">
+        <div>
+            <h2 class="section-title">@ViewData["Title"]</h2>
+            <p class="section-subtitle">Assign secure application access to the right team members.</p>
+        </div>
+    </div>
+
+    <form asp-action="@(string.IsNullOrWhiteSpace(Model.Id) ? "Create" : "Edit")" method="post" class="row g-3">
+        @Html.AntiForgeryToken()
+        <input asp-for="Id" type="hidden" />
+        <div class="col-md-6">
+            <label asp-for="FullName" class="form-label"></label>
+            <input asp-for="FullName" class="form-control" />
+            <span asp-validation-for="FullName" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Username" class="form-label"></label>
+            <input asp-for="Username" class="form-control" />
+            <span asp-validation-for="Username" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Email" class="form-label"></label>
+            <input asp-for="Email" class="form-control" />
+            <span asp-validation-for="Email" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="RoleId" class="form-label"></label>
+            <select asp-for="RoleId" class="form-select" asp-items="@(new SelectList(Model.Roles, "Id", "Name"))"></select>
+            <span asp-validation-for="RoleId" class="text-danger small"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="Password" class="form-label"></label>
+            <input asp-for="Password" class="form-control" placeholder="Leave blank to keep existing password" />
+        </div>
+        <div class="col-12">
+            <div class="form-check">
+                <input asp-for="IsActive" class="form-check-input" />
+                <label asp-for="IsActive" class="form-check-label"></label>
+            </div>
+        </div>
+        <div class="col-12 d-flex gap-2">
+            <button class="btn btn-primary">Save User</button>
+            <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

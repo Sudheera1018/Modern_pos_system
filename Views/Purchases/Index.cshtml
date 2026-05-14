@@ -1,0 +1,130 @@
+@model PurchasePageViewModel
+@{
+    ViewData["Title"] = "Purchases / GRN";
+}
+
+<div class="row g-4">
+    <div class="col-12 col-xl-5">
+        <div class="modern-card p-4">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Create GRN</h2>
+                    <p class="section-subtitle">Receive stock from suppliers and update inventory automatically.</p>
+                </div>
+            </div>
+
+            <form asp-action="Create" method="post" class="row g-3">
+                @Html.AntiForgeryToken()
+                <div class="col-md-6">
+                    <label asp-for="Form.GrnNumber" class="form-label"></label>
+                    <input asp-for="Form.GrnNumber" class="form-control" />
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Form.GrnDate" class="form-label"></label>
+                    <input asp-for="Form.GrnDate" class="form-control" />
+                </div>
+                <div class="col-12">
+                    <label asp-for="Form.SupplierId" class="form-label"></label>
+                    <select asp-for="Form.SupplierId" class="form-select" asp-items="@(new SelectList(Model.Form.Suppliers, "Id", "Name"))"></select>
+                </div>
+                <div class="col-12">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <label class="form-label mb-0">GRN Items</label>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="addItemRowBtn">Add Item</button>
+                    </div>
+                    <div id="grnItemRows">
+                        <div class="row g-2 grn-item-row">
+                            <div class="col-12">
+                                <select name="Form.Items[0].ProductId" class="form-select">
+                                    @foreach (var product in Model.Form.Products)
+                                    {
+                                        <option value="@product.Id">@product.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <input name="Form.Items[0].Quantity" class="form-control" placeholder="Quantity" />
+                            </div>
+                            <div class="col-md-6">
+                                <input name="Form.Items[0].CostPrice" class="form-control" placeholder="Cost price" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label asp-for="Form.Notes" class="form-label"></label>
+                    <textarea asp-for="Form.Notes" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="col-12">
+                    <button class="btn btn-primary w-100">Save GRN</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-7">
+        <div class="modern-card p-4">
+            <div class="section-header">
+                <div>
+                    <h2 class="section-title">Purchase History</h2>
+                    <p class="section-subtitle">Review previously received goods and totals.</p>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-modern mb-0">
+                    <thead><tr><th>GRN No</th><th>Supplier</th><th>Date</th><th>Total</th><th></th></tr></thead>
+                    <tbody>
+                    @foreach (var item in Model.Purchases)
+                    {
+                        <tr>
+                            <td>@item.GrnNumber</td>
+                            <td>@item.SupplierName</td>
+                            <td>@item.GrnDate.ToString("dd MMM yyyy")</td>
+                            <td>@item.TotalAmount.ToString("C")</td>
+                            <td class="text-end"><a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">View</a></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const grnRows = document.getElementById('grnItemRows');
+    const addItemRowBtn = document.getElementById('addItemRowBtn');
+    const productOptions = `@Html.Raw(string.Join("", Model.Form.Products.Select(product => $"<option value=\\\"{product.Id}\\\">{System.Net.WebUtility.HtmlEncode(product.Name)}</option>")))`;
+
+    addItemRowBtn.addEventListener('click', () => {
+        const index = grnRows.querySelectorAll('.grn-item-row').length;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'row g-2 grn-item-row mt-2';
+        wrapper.innerHTML = `
+            <div class="col-12 d-flex justify-content-end">
+                <button type="button" class="btn btn-sm btn-outline-danger remove-grn-row">Remove</button>
+            </div>
+            <div class="col-12">
+                <select name="Form.Items[${index}].ProductId" class="form-select">${productOptions}</select>
+            </div>
+            <div class="col-md-6">
+                <input name="Form.Items[${index}].Quantity" class="form-control" placeholder="Quantity" />
+            </div>
+            <div class="col-md-6">
+                <input name="Form.Items[${index}].CostPrice" class="form-control" placeholder="Cost price" />
+            </div>`;
+        grnRows.appendChild(wrapper);
+        bindRemoveButtons();
+    });
+
+    function bindRemoveButtons() {
+        document.querySelectorAll('.remove-grn-row').forEach(button => {
+            button.onclick = () => {
+                button.closest('.grn-item-row').remove();
+            };
+        });
+    }
+</script>
+}

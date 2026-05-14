@@ -1,0 +1,37 @@
+@model List<RoleFormViewModel>
+@{
+    ViewData["Title"] = "Roles";
+}
+
+<div class="modern-card p-4">
+    <div class="section-header">
+        <div>
+            <h2 class="section-title">Roles</h2>
+            <p class="section-subtitle">Manage the roles used by authentication and form access control.</p>
+        </div>
+        <a asp-action="CreateRole" class="btn btn-primary">Add Role</a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-modern mb-0">
+            <thead><tr><th>Role</th><th>Description</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.Name</td>
+                    <td>@item.Description</td>
+                    <td><span class="badge-soft @(item.IsActive ? "badge-instock" : "badge-out")">@(item.IsActive ? "Active" : "Inactive")</span></td>
+                    <td class="text-end">
+                        <a asp-action="EditRole" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                        <form asp-action="ToggleRoleStatus" asp-route-id="@item.Id" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <button class="btn btn-sm btn-outline-warning">Toggle</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

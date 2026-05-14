@@ -1,0 +1,56 @@
+@model List<SupplierListItemViewModel>
+@{
+    ViewData["Title"] = "Suppliers";
+    var searchTerm = ViewBag.SearchTerm?.ToString();
+}
+
+<div class="modern-card p-4">
+    <div class="section-header">
+        <div>
+            <h2 class="section-title">Suppliers</h2>
+            <p class="section-subtitle">Manage vendors connected to products and purchase entries.</p>
+        </div>
+        <a asp-action="Create" class="btn btn-primary">Add Supplier</a>
+    </div>
+
+    <form method="get" class="mb-4">
+        <input name="searchTerm" value="@searchTerm" class="form-control" placeholder="Search by code, supplier, or phone" />
+    </form>
+
+    <div class="table-responsive">
+        <table class="table table-modern mb-0">
+            <thead>
+                <tr>
+                    <th>Supplier</th>
+                    <th>Contact</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>
+                        <div class="fw-semibold">@item.SupplierName</div>
+                        <div class="small text-secondary">@item.SupplierCode</div>
+                    </td>
+                    <td>@item.ContactPerson</td>
+                    <td>@item.Phone</td>
+                    <td>@item.Email</td>
+                    <td><span class="badge-soft @(item.IsActive ? "badge-instock" : "badge-out")">@(item.IsActive ? "Active" : "Inactive")</span></td>
+                    <td class="text-end">
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                        <form asp-action="Delete" asp-route-id="@item.Id" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <button class="btn btn-sm btn-outline-danger">Remove</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

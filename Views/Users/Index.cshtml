@@ -1,0 +1,52 @@
+@model List<UserListItemViewModel>
+@{
+    ViewData["Title"] = "Users";
+}
+
+<div class="modern-card p-4">
+    <div class="section-header">
+        <div>
+            <h2 class="section-title">User Management</h2>
+            <p class="section-subtitle">Provision staff accounts, assign roles, and control login access.</p>
+        </div>
+        <a asp-action="Create" class="btn btn-primary">Add User</a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-modern mb-0">
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model)
+            {
+                <tr>
+                    <td>@item.FullName</td>
+                    <td>@item.Username</td>
+                    <td>@item.Email</td>
+                    <td>@item.RoleName</td>
+                    <td><span class="badge-soft @(item.IsActive ? "badge-instock" : "badge-out")">@(item.IsActive ? "Active" : "Inactive")</span></td>
+                    <td class="text-end">
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                        <form asp-action="ToggleStatus" asp-route-id="@item.Id" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <button class="btn btn-sm btn-outline-warning">Toggle</button>
+                        </form>
+                        <form asp-action="ResetPassword" asp-route-id="@item.Id" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <button class="btn btn-sm btn-outline-danger">Reset Password</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

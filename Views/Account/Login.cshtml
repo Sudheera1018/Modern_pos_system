@@ -1,0 +1,190 @@
+@model LoginViewModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Secure Login";
+}
+
+<div class="auth-root">
+    <!-- Left Branding Panel -->
+    <div class="auth-brand-panel">
+        <div class="auth-brand-inner">
+            <!-- Logo mark -->
+            <div class="auth-logo-mark">
+                <img src="~/images/brand/modern-pos-logo-small.png" alt="Modern POS logo" class="auth-logo-img" asp-append-version="true" />
+            </div>
+
+            <div class="auth-brand-title">
+                <h1 class="auth-headline">Modern<br><span class="auth-headline-accent">POS</span></h1>
+                <p class="auth-tagline">Built for retail. Ready for AI.</p>
+            </div>
+
+            <!-- Feature pills - minimal icons only -->
+            <div class="auth-feature-grid">
+                <div class="auth-feature-pill">
+                    <div class="auth-feature-icon">
+                        <i class="bi bi-receipt-cutoff"></i>
+                    </div>
+                    <span>POS Billing</span>
+                </div>
+                <div class="auth-feature-pill">
+                    <div class="auth-feature-icon">
+                        <i class="bi bi-boxes"></i>
+                    </div>
+                    <span>Live Inventory</span>
+                </div>
+                <div class="auth-feature-pill">
+                    <div class="auth-feature-icon">
+                        <i class="bi bi-graph-up-arrow"></i>
+                    </div>
+                    <span>AI Forecast</span>
+                </div>
+                <div class="auth-feature-pill">
+                    <div class="auth-feature-icon">
+                        <i class="bi bi-people"></i>
+                    </div>
+                    <span>Suppliers</span>
+                </div>
+                <div class="auth-feature-pill">
+                    <div class="auth-feature-icon">
+                        <i class="bi bi-bar-chart-line"></i>
+                    </div>
+                    <span>Reports</span>
+                </div>
+                <div class="auth-feature-pill">
+                    <div class="auth-feature-icon">
+                        <i class="bi bi-shield-lock"></i>
+                    </div>
+                    <span>Permissions</span>
+                </div>
+            </div>
+
+            <!-- Floating decorative orbs -->
+            <div class="auth-orb auth-orb-1"></div>
+            <div class="auth-orb auth-orb-2"></div>
+        </div>
+    </div>
+
+    <!-- Right Login Panel -->
+    <div class="auth-form-panel">
+        <div class="auth-form-card">
+            <!-- Header -->
+            <div class="auth-form-header">
+                <div class="auth-form-icon-wrap">
+                    <i class="bi bi-person-fill"></i>
+                </div>
+                <h2 class="auth-form-title">Welcome back</h2>
+                <p class="auth-form-sub">Sign in to your POS dashboard</p>
+            </div>
+
+            @if (!ViewData.ModelState.IsValid)
+            {
+                <div class="auth-alert">
+                    <i class="bi bi-exclamation-circle-fill"></i>
+                    <span>Invalid username or password.</span>
+                </div>
+            }
+
+            <form asp-action="Login" method="post" class="auth-form-body">
+                @Html.AntiForgeryToken()
+
+                <div class="auth-field">
+                    <label asp-for="Username" class="auth-label">Username</label>
+                    <div class="auth-input-wrap">
+                        <i class="bi bi-person auth-input-icon"></i>
+                        <input asp-for="Username" class="auth-input" placeholder="Enter your username" autocomplete="username" />
+                    </div>
+                    <span asp-validation-for="Username" class="auth-field-error"></span>
+                </div>
+
+                <div class="auth-field">
+                    <label asp-for="Password" class="auth-label">Password</label>
+                    <div class="auth-input-wrap">
+                        <i class="bi bi-lock auth-input-icon"></i>
+                        <input asp-for="Password" class="auth-input" placeholder="Enter your password" autocomplete="current-password" />
+                        <button type="button" class="auth-eye-btn" onclick="togglePasswordVisibility(this)" tabindex="-1">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    <span asp-validation-for="Password" class="auth-field-error"></span>
+                </div>
+
+                <div class="auth-remember-row">
+                    <label class="auth-check-label">
+                        <input asp-for="RememberMe" class="auth-check-input" />
+                        <span>Remember me</span>
+                    </label>
+                    <span class="auth-secure-badge">
+                        <i class="bi bi-shield-check"></i> Secure
+                    </span>
+                </div>
+
+                <button type="submit" class="auth-submit-btn">
+                    <i class="bi bi-box-arrow-in-right"></i>
+                    Sign In to POS
+                </button>
+            </form>
+
+            <!-- Demo credentials - collapsible hint -->
+            <div class="auth-demo-section">
+                <button class="auth-demo-toggle" type="button" onclick="toggleDemo(this)">
+                    <i class="bi bi-info-circle"></i> Demo credentials
+                    <i class="bi bi-chevron-down auth-demo-chevron"></i>
+                </button>
+                <div class="auth-demo-body" id="demoBody">
+                    <div class="auth-demo-grid">
+                        <div class="auth-demo-item" onclick="fillCredentials('admin','Admin@123')">
+                            <div class="auth-demo-role admin-role"><i class="bi bi-person-badge"></i></div>
+                            <div>
+                                <div class="auth-demo-role-name">Admin</div>
+                                <div class="auth-demo-creds">admin / Admin@123</div>
+                            </div>
+                        </div>
+                        <div class="auth-demo-item" onclick="fillCredentials('cashier','Cashier@123')">
+                            <div class="auth-demo-role cashier-role"><i class="bi bi-cash-register"></i></div>
+                            <div>
+                                <div class="auth-demo-role-name">Cashier</div>
+                                <div class="auth-demo-creds">cashier / Cashier@123</div>
+                            </div>
+                        </div>
+                        <div class="auth-demo-item" onclick="fillCredentials('manager','Manager@123')">
+                            <div class="auth-demo-role manager-role"><i class="bi bi-briefcase"></i></div>
+                            <div>
+                                <div class="auth-demo-role-name">Manager</div>
+                                <div class="auth-demo-creds">manager / Manager@123</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function togglePasswordVisibility(btn) {
+            const input = btn.closest('.auth-input-wrap').querySelector('.auth-input');
+            const icon = btn.querySelector('i');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('bi-eye', 'bi-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.replace('bi-eye-slash', 'bi-eye');
+            }
+        }
+
+        function toggleDemo(btn) {
+            const body = document.getElementById('demoBody');
+            const chevron = btn.querySelector('.auth-demo-chevron');
+            body.classList.toggle('open');
+            chevron.style.transform = body.classList.contains('open') ? 'rotate(180deg)' : '';
+        }
+
+        function fillCredentials(username, password) {
+            document.getElementById('Username').value = username;
+            document.getElementById('Password').value = password;
+        }
+    </script>
+}

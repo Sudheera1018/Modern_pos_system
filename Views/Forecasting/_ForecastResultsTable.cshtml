@@ -1,0 +1,76 @@
+@model ForecastingPageViewModel
+
+@if (Model.Results.Count == 0)
+{
+    <div class="forecast-empty-state forecast-empty-state-compact">
+        <div>
+            <i class="bi bi-bar-chart-steps"></i>
+            <h4>No forecast results yet</h4>
+            <p>Generate a forecast for the selected date to populate this dashboard with real ML predictions and inventory insights.</p>
+        </div>
+    </div>
+
+    @if (TempData["ForecastGeneratedMessage"] is string forecastGeneratedMessage)
+    {
+        <div class="alert alert-warning mt-3 mb-0" role="alert">
+            @forecastGeneratedMessage
+        </div>
+    }
+}
+else
+{
+    <div class="table-responsive forecast-results-table-wrap">
+        <table class="table table-modern table-forecast mb-0">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Current Stock</th>
+                    <th>Predicted Next Day</th>
+                    <th>Predicted Next 7 Days</th>
+                    <th>Safety Stock</th>
+                    <th>Suggested Reorder Qty</th>
+                    <th>Reorder Status</th>
+                    <th>Slow Moving</th>
+                    <th>Confidence</th>
+                    <th>Generated</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var row in Model.Results)
+            {
+                var reorderBadge = row.ReorderStatus switch
+                {
+                    "Critical" => "badge-out",
+                    "Reorder Now" => "badge-low",
+                    _ => "badge-instock"
+                };
+                <tr>
+                    <td>
+                        <div class="fw-semibold">@row.ProductName</div>
+                        <div class="small text-secondary">@row.ProductCode | @row.CategoryName</div>
+                    </td>
+                    <td>@row.CurrentStock.ToString("N0")</td>
+                    <td>@row.PredictedNextDaySales.ToString("N2")</td>
+                    <td>@row.PredictedNext7DaysTotal.ToString("N2")</td>
+                    <td>@row.SafetyStock.ToString("N0")</td>
+                    <td>@row.ReorderSuggestedQuantity.ToString("N0")</td>
+                    <td><span class="badge-soft @reorderBadge">@row.ReorderStatus</span></td>
+                    <td>@(row.IsSlowMoving ? "Yes" : "No")</td>
+                    <td>@row.ConfidenceLabel</td>
+                    <td>@row.ForecastGeneratedAt.ToLocalTime().ToString("dd MMM HH:mm")</td>
+                    <td class="text-end">
+                        <button type="button"
+                                class="btn btn-sm btn-outline-secondary forecast-detail-trigger"
+                                data-detail-url="@Url.Action("Details", new { id = row.Id })"
+                                data-bs-toggle="modal"
+                                data-bs-target="#forecastDetailModal">
+                            View Details
+                        </button>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

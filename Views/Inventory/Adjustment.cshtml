@@ -1,0 +1,44 @@
+@model StockAdjustmentViewModel
+@{
+    ViewData["Title"] = "Stock Adjustment";
+}
+
+<div class="modern-card p-4">
+    <div class="section-header">
+        <div>
+            <h2 class="section-title">Stock Adjustment</h2>
+            <p class="section-subtitle">Increase or decrease current stock with proper movement logging.</p>
+        </div>
+    </div>
+
+    <form method="post" class="row g-3">
+        @Html.AntiForgeryToken()
+        <div class="col-md-6">
+            <label asp-for="ProductId" class="form-label"></label>
+            <select asp-for="ProductId" class="form-select" asp-items="@(new SelectList(Model.Products, "Id", "Name"))"></select>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="AdjustmentType" class="form-label"></label>
+            <select asp-for="AdjustmentType" class="form-select">
+                <option>Increase</option>
+                <option>Decrease</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label asp-for="Quantity" class="form-label"></label>
+            <input asp-for="Quantity" class="form-control" />
+        </div>
+        <div class="col-12">
+            <label asp-for="Remarks" class="form-label"></label>
+            <textarea asp-for="Remarks" class="form-control" rows="3"></textarea>
+        </div>
+        <div class="col-12 d-flex gap-2">
+            <button class="btn btn-primary">Save Adjustment</button>
+            <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,89 @@
+@model List<ProductListItemViewModel>
+@{
+    ViewData["Title"] = "Products";
+    var categories = ViewBag.Categories as List<LookupOptionViewModel> ?? [];
+    var selectedCategory = ViewBag.CategoryId?.ToString();
+    var searchTerm = ViewBag.SearchTerm?.ToString();
+}
+
+<div class="modern-card p-4">
+    <div class="section-header">
+        <div>
+            <h2 class="section-title">Product Catalog</h2>
+            <p class="section-subtitle">Maintain pricing, barcode, stock threshold, supplier linkage, and ML forecast mapping.</p>
+        </div>
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-circle me-2"></i>Add Product</a>
+    </div>
+
+    <form method="get" class="row g-3 mb-4">
+        <div class="col-lg-5">
+            <input name="searchTerm" value="@searchTerm" class="form-control" placeholder="Search by name, code, barcode" />
+        </div>
+        <div class="col-lg-4">
+            <select name="categoryId" class="form-select">
+                <option value="">All Categories</option>
+                @foreach (var category in categories)
+                {
+                    if (selectedCategory == category.Id)
+                    {
+                        <option value="@category.Id" selected>@category.Name</option>
+                    }
+                    else
+                    {
+                        <option value="@category.Id">@category.Name</option>
+                    }
+                }
+            </select>
+        </div>
+        <div class="col-lg-3">
+            <button class="btn btn-outline-secondary w-100">Apply Filters</button>
+        </div>
+    </form>
+
+    <div class="table-responsive">
+        <table class="table table-modern mb-0">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Category</th>
+                    <th>Supplier</th>
+                    <th>Price</th>
+                    <th>Stock</th>
+                    <th>Forecast Code</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model)
+            {
+                var badgeClass = item.StockStatus switch
+                {
+                    "Out of Stock" => "badge-out",
+                    "Low Stock" => "badge-low",
+                    _ => "badge-instock"
+                };
+                <tr>
+                    <td>
+                        <div class="fw-semibold">@item.ProductName</div>
+                        <div class="small text-secondary">@item.ProductCode | @item.Barcode</div>
+                    </td>
+                    <td>@item.CategoryName</td>
+                    <td>@item.SupplierName</td>
+                    <td>@item.SellingPrice.ToString("C")</td>
+                    <td>@item.CurrentStock</td>
+                    <td>@item.ForecastItemCode</td>
+                    <td><span class="badge-soft @badgeClass">@item.StockStatus</span></td>
+                    <td class="text-end">
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                        <form asp-action="Delete" asp-route-id="@item.Id" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

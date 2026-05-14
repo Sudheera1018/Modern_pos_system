@@ -1,0 +1,814 @@
+@model PosPageViewModel
+@using System.Text.Json
+@{
+    ViewData["Title"] = "POS Billing";
+    var customersJson = JsonSerializer.Serialize(Model.Customers, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+    var categoryNames = Model.Products
+        .Select(x => x.CategoryName)
+        .Where(x => !string.IsNullOrWhiteSpace(x))
+        .Distinct()
+        .OrderBy(x => x)
+        .ToList();
+}
+
+@Html.AntiForgeryToken()
+
+<div class="modern-card pos-command-bar mb-4">
+    <div class="pos-command-copy">
+        <p class="page-eyebrow mb-2">Cashier workspace</p>
+        <h2 class="section-title mb-1">Fast billing and modal checkout</h2>
+        <p class="section-subtitle">Invoice <strong>@Model.PreviewInvoiceNo</strong> prepared for @Model.CashierName</p>
+    </div>
+    <div class="pos-command-meta">
+        <div class="pos-inline-metric">
+            <span class="pos-inline-label">Items</span>
+            <strong id="cartCountText">0</strong>
+        </div>
+        <div class="pos-inline-metric accent">
+            <span class="pos-inline-label">Bill Total</span>
+            <strong id="commandGrandTotalText">$0.00</strong>
+        </div>
+        <div class="pos-inline-metric">
+            <span class="pos-inline-label">Customer</span>
+            <strong id="selectedCustomerNameText">Walk-In Customer</strong>
+        </div>
+        <div class="pos-inline-metric">
+            <span class="pos-inline-label">Reward Points</span>
+            <strong id="headerRewardPointsText">0</strong>
+        </div>
+        <div class="chip-inline"><i class="bi bi-receipt-cutoff"></i> @Model.PreviewInvoiceNo</div>
+        <div class="chip-inline"><i class="bi bi-person-badge"></i> @Model.RoleName</div>
+    </div>
+</div>
+
+<div class="modern-card pos-billing-screen p-4">
+    <div class="section-header mb-3">
+        <div>
+            <h3 class="section-title mb-1">Live Bill / Cart</h3>
+            <p class="section-subtitle mb-0">Use the product popup to add items, keep the cart visible here, then finish payment in a checkout popup.</p>
+        </div>
+        <div class="pos-primary-actions">
+            <button type="button" class="btn btn-primary" id="openProductPickerBtn">
+                <i class="bi bi-plus-circle me-2"></i>Add Product
+            </button>
+            <button type="button" class="btn btn-success" id="openCheckoutModalBtn">
+                <i class="bi bi-bag-check me-2"></i>Checkout
+            </button>
+            <button type="button" class="btn btn-outline-secondary" id="clearCartBtn">
+                <i class="bi bi-x-circle me-2"></i>Clear Bill
+            </button>
+        </div>
+    </div>
+
+    <div class="pos-bill-toolbar">
+        <div class="pos-toolbar-group customer">
+            <label class="form-label">Customer</label>
+            <select id="customerId" class="form-select">
+                @foreach (var customer in Model.Customers)
+                {
+                    if (customer.Id == Model.WalkInCustomerId)
+                    {
+                        <option value="@customer.Id" selected>@customer.Name (@customer.CustomerCode)</option>
+                    }
+                    else
+                    {
+                        <option value="@customer.Id">@customer.Name (@customer.CustomerCode)</option>
+                    }
+                }
+            </select>
+        </div>
+        <div class="pos-toolbar-group points">
+            <span class="toolbar-label">Available Reward Points</span>
+            <strong id="availablePointsText">0</strong>
+            <small class="text-secondary">Earn 1 point per @Model.LoyaltyEarnRateAmount.ToString("N0") spent</small>
+        </div>
+        <div class="pos-toolbar-group points">
+            <span class="toolbar-label">Estimated Points To Earn</span>
+            <strong id="pointsToEarnText">0</strong>
+            <small class="text-secondary">Updated live from the current bill</small>
+        </div>
+    </div>
+
+    <div class="bill-cart-card">
+        <div class="bill-cart-head">
+            <div class="bill-cart-head-copy">
+                <h4>Cart / Bill Items</h4>
+                <p>Cashier can review item name, quantity, discount, points effect, and line total before checkout.</p>
+            </div>
+            <span class="cart-count-pill"><span id="cartCountBadge">0</span> items</span>
+        </div>
+
+        <div class="bill-cart-scroll">
+            <div id="cartBody" class="bill-cart-list"></div>
+            <div id="emptyCartRow" class="empty-state bill-empty-state">
+                <div>
+                    <i class="bi bi-basket2"></i>
+                    <h5>No items in the bill yet</h5>
+                    <p>Click the `Add Product` button to open the product picker and start billing.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bill-summary-grid">
+        <div class="bill-summary-box">
+            <span class="bill-summary-label">Subtotal</span>
+            <strong id="subtotalText">$0.00</strong>
+        </div>
+        <div class="bill-summary-box">
+            <span class="bill-summary-label">Discount</span>
+            <strong id="discountText">$0.00</strong>
+        </div>
+        <div class="bill-summary-box">
+            <span class="bill-summary-label">Reward Redeemed</span>
+            <strong id="loyaltyRedeemedText">$0.00</strong>
+        </div>
+        <div class="bill-summary-box">
+            <span class="bill-summary-label">Tax</span>
+            <strong id="taxPreviewText">$0.00</strong>
+        </div>
+        <div class="bill-summary-box total accent">
+            <span class="bill-summary-label">Grand Total</span>
+            <strong id="grandTotalText">$0.00</strong>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="productPickerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content product-picker-modal">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title">Add Products</h5>
+                    <p class="text-secondary mb-0 small">Search, filter by category, resize cards, and add items directly to the bill.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="product-modal-toolbar">
+                    <div class="product-modal-filter">
+                        <label class="form-label">Search Product</label>
+                        <input id="productModalSearch" class="form-control" placeholder="Search by name, code, or barcode" />
+                    </div>
+                    <div class="product-modal-filter">
+                        <label class="form-label">Category</label>
+                        <select id="productModalCategory" class="form-select">
+                            <option value="">All Categories</option>
+                            @foreach (var category in categoryNames)
+                            {
+                                <option value="@category">@category</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="product-modal-filter">
+                        <label class="form-label">Barcode</label>
+                        <input id="productModalBarcode" class="form-control" placeholder="Scan barcode and press Enter" />
+                    </div>
+                    <div class="product-modal-density">
+                        <label class="form-label">Card Size</label>
+                        <div class="btn-group w-100" role="group">
+                            <button type="button" class="btn btn-outline-secondary active density-btn" data-density="medium">Medium</button>
+                            <button type="button" class="btn btn-outline-secondary density-btn" data-density="small">Small</button>
+                            <button type="button" class="btn btn-outline-secondary density-btn" data-density="large">Large</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="product-picker-grid density-medium" id="productPickerGrid">
+                    @foreach (var product in Model.Products)
+                    {
+                        <button type="button"
+                                class="picker-product-card"
+                                data-id="@product.Id"
+                                data-name="@product.ProductName"
+                                data-code="@product.ProductCode"
+                                data-category="@product.CategoryName"
+                                data-barcode="@product.Barcode"
+                                data-price="@product.SellingPrice"
+                                data-stock="@product.CurrentStock"
+                                data-reorder="@product.ReorderLevel">
+                            <img src="@product.ImageUrl" alt="@product.ProductName" />
+                            <div class="picker-card-copy">
+                                <div class="fw-semibold">@product.ProductName</div>
+                                <div class="small text-secondary">@product.ProductCode - @product.CategoryName</div>
+                                <div class="picker-card-meta">
+                                    <span class="fw-bold text-primary">@product.SellingPrice.ToString("C")</span>
+                                    <span class="badge-soft @(product.CurrentStock <= 0 ? "badge-out" : product.CurrentStock <= product.ReorderLevel ? "badge-low" : "badge-instock")">@product.CurrentStock in stock</span>
+                                </div>
+                            </div>
+                        </button>
+                    }
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Done Adding Products</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="checkoutModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content checkout-modal">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title">Checkout</h5>
+                    <p class="text-secondary mb-0 small">Review customer, payment method, reward points, and generate the e-bill.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="checkout-summary-panel">
+                    <div class="checkout-summary-item">
+                        <span class="checkout-summary-label">Customer</span>
+                        <strong id="checkoutCustomerName">Walk-In Customer</strong>
+                    </div>
+                    <div class="checkout-summary-item">
+                        <span class="checkout-summary-label">Available Points</span>
+                        <strong id="checkoutAvailablePoints">0</strong>
+                    </div>
+                    <div class="checkout-summary-item accent">
+                        <span class="checkout-summary-label">Net Payable</span>
+                        <strong id="checkoutGrandTotalText">$0.00</strong>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Reward Points To Redeem</label>
+                        <input id="redeemPointsInput" type="number" min="0" step="1" value="0" class="form-control" />
+                    </div>
+                    <div class="col-md-6">
+                        <div class="checkout-toggle-row">
+                            <label class="form-check-label" for="useMaxPoints">Use Maximum Points</label>
+                            <input id="useMaxPoints" type="checkbox" class="form-check-input" />
+                        </div>
+                        <small class="text-secondary">1 point = @Model.LoyaltyRedeemValue.ToString("N0") currency.</small>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Payment Method</label>
+                        <select id="paymentMethod" class="form-select">
+                            @foreach (var method in Model.PaymentMethods)
+                            {
+                                <option value="@method.Value">@method.Label</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Tax</label>
+                        <input id="taxAmount" type="number" min="0" step="0.01" value="0" class="form-control" />
+                    </div>
+                </div>
+
+                <div class="payment-sections mt-3">
+                    <div class="payment-section active" id="cashPaymentSection">
+                        <label class="form-label">Cash Received</label>
+                        <input id="cashAmount" type="number" min="0" step="0.01" value="0" class="form-control" />
+                    </div>
+
+                    <div class="payment-section" id="cardPaymentSection">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Card Amount</label>
+                                <input id="cardAmount" type="number" min="0" step="0.01" value="0" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Card Reference / Last 4 Digits</label>
+                                <input id="cardReference" class="form-control" placeholder="Optional card reference" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="payment-section" id="transferPaymentSection">
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Transfer Amount</label>
+                                <input id="fundTransferAmount" type="number" min="0" step="0.01" value="0" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Reference No</label>
+                                <input id="transferReferenceNo" class="form-control" placeholder="Required for transfer" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Provider / Bank</label>
+                                <input id="transferProvider" class="form-control" placeholder="Optional provider" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="checkout-totals-card mt-4">
+                    <div class="d-flex justify-content-between mb-2"><span>Subtotal</span><strong id="checkoutSubtotalText">$0.00</strong></div>
+                    <div class="d-flex justify-content-between mb-2"><span>Discount</span><strong id="checkoutDiscountText">$0.00</strong></div>
+                    <div class="d-flex justify-content-between mb-2"><span>Tax</span><strong id="checkoutTaxText">$0.00</strong></div>
+                    <div class="d-flex justify-content-between mb-2"><span>Reward Redemption</span><strong id="checkoutRewardText">$0.00</strong></div>
+                    <div class="d-flex justify-content-between mb-2"><span>Paid Amount</span><strong id="paidAmountText">$0.00</strong></div>
+                    <div class="d-flex justify-content-between mb-2"><span>Balance Return</span><strong id="balanceText">$0.00</strong></div>
+                    <div class="d-flex justify-content-between border-top pt-2"><span class="fw-bold">Grand Total</span><strong id="checkoutPayableText">$0.00</strong></div>
+                </div>
+
+                <div class="mt-3">
+                    <label class="form-label">Notes</label>
+                    <textarea id="checkoutNotes" class="form-control" rows="2" placeholder="Optional remarks for the sale"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer checkout-modal-footer">
+                <button type="button" class="btn btn-outline-secondary" id="printInvoiceBtn">
+                    <i class="bi bi-printer me-2"></i>Open Last E-Bill
+                </button>
+                <button type="button" class="btn btn-primary" id="checkoutBtn">
+                    <i class="bi bi-bag-check me-2"></i>Confirm Payment and Generate E-Bill
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const customers = @Html.Raw(customersJson);
+    const antiForgeryToken = document.querySelector('input[name="__RequestVerificationToken"]').value;
+    const paymentMethodMap = { Cash: 1, Card: 2, Split: 3, FundTransfer: 4 };
+    const loyaltyEarnRateAmount = Number('@Model.LoyaltyEarnRateAmount');
+    const loyaltyRedeemValue = Number('@Model.LoyaltyRedeemValue');
+    const minimumRedeemPoints = Number('@Model.MinimumRedeemPoints');
+    const walkInCustomerId = '@Model.WalkInCustomerId';
+    const cart = [];
+    let lastInvoiceUrl = '';
+
+    const productPickerModal = new bootstrap.Modal(document.getElementById('productPickerModal'));
+    const checkoutModal = new bootstrap.Modal(document.getElementById('checkoutModal'));
+
+    const pickerCards = Array.from(document.querySelectorAll('.picker-product-card'));
+    const productModalSearch = document.getElementById('productModalSearch');
+    const productModalCategory = document.getElementById('productModalCategory');
+    const productModalBarcode = document.getElementById('productModalBarcode');
+    const productPickerGrid = document.getElementById('productPickerGrid');
+    const densityButtons = Array.from(document.querySelectorAll('.density-btn'));
+
+    const customerId = document.getElementById('customerId');
+    const cartBody = document.getElementById('cartBody');
+    const emptyCartRow = document.getElementById('emptyCartRow');
+    const redeemPointsInput = document.getElementById('redeemPointsInput');
+    const useMaxPoints = document.getElementById('useMaxPoints');
+    const paymentMethod = document.getElementById('paymentMethod');
+    const taxAmount = document.getElementById('taxAmount');
+    const cashAmount = document.getElementById('cashAmount');
+    const cardAmount = document.getElementById('cardAmount');
+    const cardReference = document.getElementById('cardReference');
+    const fundTransferAmount = document.getElementById('fundTransferAmount');
+    const transferReferenceNo = document.getElementById('transferReferenceNo');
+    const transferProvider = document.getElementById('transferProvider');
+
+    const openProductPickerBtn = document.getElementById('openProductPickerBtn');
+    const openCheckoutModalBtn = document.getElementById('openCheckoutModalBtn');
+    const clearCartBtn = document.getElementById('clearCartBtn');
+    const checkoutBtn = document.getElementById('checkoutBtn');
+    const printInvoiceBtn = document.getElementById('printInvoiceBtn');
+
+    const cartCountText = document.getElementById('cartCountText');
+    const cartCountBadge = document.getElementById('cartCountBadge');
+    const commandGrandTotalText = document.getElementById('commandGrandTotalText');
+    const selectedCustomerNameText = document.getElementById('selectedCustomerNameText');
+    const headerRewardPointsText = document.getElementById('headerRewardPointsText');
+    const availablePointsText = document.getElementById('availablePointsText');
+    const pointsToEarnText = document.getElementById('pointsToEarnText');
+    const subtotalText = document.getElementById('subtotalText');
+    const discountText = document.getElementById('discountText');
+    const loyaltyRedeemedText = document.getElementById('loyaltyRedeemedText');
+    const taxPreviewText = document.getElementById('taxPreviewText');
+    const grandTotalText = document.getElementById('grandTotalText');
+
+    const checkoutCustomerName = document.getElementById('checkoutCustomerName');
+    const checkoutAvailablePoints = document.getElementById('checkoutAvailablePoints');
+    const checkoutGrandTotalText = document.getElementById('checkoutGrandTotalText');
+    const checkoutSubtotalText = document.getElementById('checkoutSubtotalText');
+    const checkoutDiscountText = document.getElementById('checkoutDiscountText');
+    const checkoutTaxText = document.getElementById('checkoutTaxText');
+    const checkoutRewardText = document.getElementById('checkoutRewardText');
+    const paidAmountText = document.getElementById('paidAmountText');
+    const balanceText = document.getElementById('balanceText');
+    const checkoutPayableText = document.getElementById('checkoutPayableText');
+
+    const currency = (value) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+
+    function getSelectedCustomer() {
+        return customers.find(customer => customer.id === customerId.value) || customers.find(customer => customer.id === walkInCustomerId) || customers[0];
+    }
+
+    function getLinePoints(lineTotal) {
+        return loyaltyEarnRateAmount > 0 ? Math.floor(Math.max(0, lineTotal) / loyaltyEarnRateAmount) : 0;
+    }
+
+    function getMaxRedeemablePoints(customer, grossTotal) {
+        if (!customer || customer.isWalkIn || loyaltyRedeemValue <= 0) {
+            return 0;
+        }
+
+        return Math.max(0, Math.min(Number(customer.loyaltyPoints || 0), Math.floor(grossTotal / loyaltyRedeemValue)));
+    }
+
+    function getRedeemedPoints(customer, grossTotal) {
+        if (!customer || customer.isWalkIn) {
+            redeemPointsInput.value = '0';
+            return 0;
+        }
+
+        const maxRedeemable = getMaxRedeemablePoints(customer, grossTotal);
+        if (useMaxPoints.checked) {
+            redeemPointsInput.value = maxRedeemable.toString();
+            return maxRedeemable;
+        }
+
+        const requested = Math.max(0, Math.floor(Number(redeemPointsInput.value || 0)));
+        const normalized = Math.min(requested, maxRedeemable);
+        redeemPointsInput.value = normalized.toString();
+        return normalized >= minimumRedeemPoints ? normalized : 0;
+    }
+
+    function getRelevantPaidAmount() {
+        const method = paymentMethod.value;
+        const cash = Number(cashAmount.value || 0);
+        const card = Number(cardAmount.value || 0);
+        const transfer = Number(fundTransferAmount.value || 0);
+
+        switch (method) {
+            case 'Cash':
+                return cash;
+            case 'Card':
+                return card;
+            case 'FundTransfer':
+                return transfer;
+            case 'Split':
+                return cash + card + transfer;
+            default:
+                return cash;
+        }
+    }
+
+    function findCartItem(id) {
+        return cart.find(item => item.id === id);
+    }
+
+    function addToCart(product) {
+        if (Number(product.stock) <= 0) {
+            alert('This product is out of stock and cannot be billed.');
+            return;
+        }
+
+        const existing = findCartItem(product.id);
+        if (existing) {
+            if (existing.quantity + 1 > Number(product.stock)) {
+                alert('Stock limit reached for this product.');
+                return;
+            }
+
+            existing.quantity += 1;
+        } else {
+            cart.push({
+                id: product.id,
+                name: product.name,
+                code: product.code,
+                category: product.category,
+                barcode: product.barcode,
+                price: Number(product.price),
+                stock: Number(product.stock),
+                reorder: Number(product.reorder),
+                quantity: 1,
+                discount: 0
+            });
+        }
+
+        renderCart();
+    }
+
+    function renderCart() {
+        cartBody.innerHTML = '';
+
+        if (cart.length === 0) {
+            emptyCartRow.style.display = 'flex';
+            updateTotals();
+            return;
+        }
+
+        emptyCartRow.style.display = 'none';
+
+        cart.forEach((item, index) => {
+            const row = document.createElement('div');
+            row.className = 'bill-cart-row';
+            const lineTotal = (item.price * item.quantity) - item.discount;
+            const linePoints = getLinePoints(lineTotal);
+            const lowStock = item.stock <= item.reorder ? '<span class="bill-line-badge warning">Low stock</span>' : '';
+
+            row.innerHTML = `
+                <div class="bill-cart-row-main">
+                    <div class="bill-cart-copy">
+                        <div class="fw-semibold">${item.name}</div>
+                        <div class="small text-secondary">${item.code} - ${item.category || 'General'}</div>
+                    </div>
+                    <div class="bill-cart-tags">
+                        ${lowStock}
+                        <span class="bill-line-badge">Pts ${linePoints}</span>
+                    </div>
+                </div>
+                <div class="bill-cart-row-fields">
+                    <div class="bill-field">
+                        <label>Qty</label>
+                        <input type="number" min="1" max="${item.stock}" value="${item.quantity}" class="form-control qty-input" data-index="${index}" />
+                    </div>
+                    <div class="bill-field static">
+                        <label>Unit Price</label>
+                        <div class="bill-static-value">${currency(item.price)}</div>
+                    </div>
+                    <div class="bill-field">
+                        <label>Discount</label>
+                        <input type="number" min="0" step="0.01" value="${item.discount}" class="form-control discount-input" data-index="${index}" />
+                    </div>
+                    <div class="bill-field static total">
+                        <label>Line Total</label>
+                        <div class="bill-static-value">${currency(lineTotal)}</div>
+                    </div>
+                    <div class="bill-field action">
+                        <label>Remove</label>
+                        <button type="button" class="btn btn-outline-danger remove-item" data-index="${index}"><i class="bi bi-trash"></i></button>
+                    </div>
+                </div>
+            `;
+            cartBody.appendChild(row);
+        });
+
+        bindCartEvents();
+        updateTotals();
+    }
+
+    function bindCartEvents() {
+        document.querySelectorAll('.qty-input').forEach(input => {
+            input.addEventListener('change', event => {
+                const index = Number(event.target.dataset.index);
+                const quantity = Number(event.target.value);
+                const item = cart[index];
+                if (!item || quantity <= 0 || quantity > item.stock) {
+                    event.target.value = item.quantity;
+                    return;
+                }
+
+                item.quantity = quantity;
+                renderCart();
+            });
+        });
+
+        document.querySelectorAll('.discount-input').forEach(input => {
+            input.addEventListener('change', event => {
+                const index = Number(event.target.dataset.index);
+                const discount = Number(event.target.value);
+                const item = cart[index];
+                item.discount = discount < 0 ? 0 : discount;
+                renderCart();
+            });
+        });
+
+        document.querySelectorAll('.remove-item').forEach(button => {
+            button.addEventListener('click', event => {
+                const index = Number(event.currentTarget.dataset.index);
+                cart.splice(index, 1);
+                renderCart();
+            });
+        });
+    }
+
+    function updatePaymentSections() {
+        const method = paymentMethod.value;
+        const cashSection = document.getElementById('cashPaymentSection');
+        const cardSection = document.getElementById('cardPaymentSection');
+        const transferSection = document.getElementById('transferPaymentSection');
+
+        cashSection.classList.remove('active');
+        cardSection.classList.remove('active');
+        transferSection.classList.remove('active');
+
+        if (method === 'Cash') {
+            cashSection.classList.add('active');
+            cardAmount.value = '0';
+            fundTransferAmount.value = '0';
+            cardReference.value = '';
+            transferReferenceNo.value = '';
+            transferProvider.value = '';
+        } else if (method === 'Card') {
+            cardSection.classList.add('active');
+            cashAmount.value = '0';
+            fundTransferAmount.value = '0';
+            transferReferenceNo.value = '';
+            transferProvider.value = '';
+        } else if (method === 'FundTransfer') {
+            transferSection.classList.add('active');
+            cashAmount.value = '0';
+            cardAmount.value = '0';
+            cardReference.value = '';
+        } else {
+            cashSection.classList.add('active');
+            cardSection.classList.add('active');
+            transferSection.classList.add('active');
+        }
+    }
+
+    function updateCustomerSummary() {
+        const customer = getSelectedCustomer();
+        const points = customer && !customer.isWalkIn ? Number(customer.loyaltyPoints || 0) : 0;
+        const label = customer ? `${customer.name}${customer.isWalkIn ? '' : ` (${customer.customerCode})`}` : 'Walk-In Customer';
+        const loyaltyDisabled = !customer || customer.isWalkIn;
+
+        selectedCustomerNameText.textContent = label;
+        headerRewardPointsText.textContent = points.toFixed(0);
+        availablePointsText.textContent = points.toFixed(0);
+        checkoutCustomerName.textContent = label;
+        checkoutAvailablePoints.textContent = points.toFixed(0);
+        redeemPointsInput.disabled = loyaltyDisabled;
+        useMaxPoints.disabled = loyaltyDisabled;
+
+        if (loyaltyDisabled) {
+            redeemPointsInput.value = '0';
+            useMaxPoints.checked = false;
+        }
+    }
+
+    function updateTotals() {
+        const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const discount = cart.reduce((sum, item) => sum + Number(item.discount), 0);
+        const tax = Number(taxAmount.value || 0);
+        const grossTotal = subtotal - discount + tax;
+        const customer = getSelectedCustomer();
+        const redeemedPoints = getRedeemedPoints(customer, grossTotal);
+        const loyaltyAmountRedeemed = redeemedPoints * loyaltyRedeemValue;
+        const netPayable = Math.max(0, grossTotal - loyaltyAmountRedeemed);
+        const paid = getRelevantPaidAmount();
+        const balance = paid - netPayable;
+        const totalItems = cart.reduce((sum, item) => sum + Number(item.quantity), 0);
+        const pointsEarned = customer && !customer.isWalkIn && loyaltyEarnRateAmount > 0
+            ? Math.floor(netPayable / loyaltyEarnRateAmount)
+            : 0;
+
+        cartCountText.textContent = totalItems.toString();
+        cartCountBadge.textContent = totalItems.toString();
+        commandGrandTotalText.textContent = currency(netPayable);
+        pointsToEarnText.textContent = pointsEarned.toString();
+
+        subtotalText.textContent = currency(subtotal);
+        discountText.textContent = currency(discount);
+        loyaltyRedeemedText.textContent = currency(loyaltyAmountRedeemed);
+        taxPreviewText.textContent = currency(tax);
+        grandTotalText.textContent = currency(netPayable);
+
+        checkoutGrandTotalText.textContent = currency(netPayable);
+        checkoutSubtotalText.textContent = currency(subtotal);
+        checkoutDiscountText.textContent = currency(discount);
+        checkoutTaxText.textContent = currency(tax);
+        checkoutRewardText.textContent = currency(loyaltyAmountRedeemed);
+        paidAmountText.textContent = currency(paid);
+        balanceText.textContent = currency(balance > 0 ? balance : 0);
+        checkoutPayableText.textContent = currency(netPayable);
+    }
+
+    function filterProductCards() {
+        const searchValue = (productModalSearch.value || '').trim().toLowerCase();
+        const categoryValue = productModalCategory.value;
+
+        pickerCards.forEach(card => {
+            const matchesSearch = !searchValue
+                || card.dataset.name.toLowerCase().includes(searchValue)
+                || card.dataset.code.toLowerCase().includes(searchValue)
+                || card.dataset.barcode.toLowerCase().includes(searchValue);
+            const matchesCategory = !categoryValue || card.dataset.category === categoryValue;
+
+            card.style.display = matchesSearch && matchesCategory ? 'flex' : 'none';
+        });
+    }
+
+    pickerCards.forEach(card => {
+        card.addEventListener('click', () => addToCart(card.dataset));
+    });
+
+    densityButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            densityButtons.forEach(item => item.classList.remove('active'));
+            button.classList.add('active');
+            productPickerGrid.classList.remove('density-small', 'density-medium', 'density-large');
+            productPickerGrid.classList.add(`density-${button.dataset.density}`);
+        });
+    });
+
+    openProductPickerBtn.addEventListener('click', () => {
+        productPickerModal.show();
+        productModalSearch.focus();
+    });
+
+    openCheckoutModalBtn.addEventListener('click', () => {
+        if (cart.length === 0) {
+            alert('Please add products before checkout.');
+            return;
+        }
+
+        updateCustomerSummary();
+        updatePaymentSections();
+        updateTotals();
+        checkoutModal.show();
+    });
+
+    productModalSearch.addEventListener('input', filterProductCards);
+    productModalCategory.addEventListener('change', filterProductCards);
+    productModalBarcode.addEventListener('keydown', event => {
+        if (event.key !== 'Enter') {
+            return;
+        }
+
+        event.preventDefault();
+        const found = pickerCards.find(card => card.dataset.barcode === productModalBarcode.value.trim());
+        if (found) {
+            addToCart(found.dataset);
+            productModalBarcode.value = '';
+        } else {
+            alert('Barcode not found.');
+        }
+    });
+
+    [customerId, paymentMethod].forEach(element => element.addEventListener('change', () => {
+        updateCustomerSummary();
+        updatePaymentSections();
+        updateTotals();
+    }));
+    [taxAmount, cashAmount, cardAmount, fundTransferAmount, redeemPointsInput].forEach(element => element.addEventListener('input', updateTotals));
+    useMaxPoints.addEventListener('change', updateTotals);
+
+    clearCartBtn.addEventListener('click', () => {
+        cart.length = 0;
+        renderCart();
+    });
+
+    checkoutBtn.addEventListener('click', async () => {
+        if (cart.length === 0) {
+            alert('Please add products before checkout.');
+            return;
+        }
+
+        const selectedCustomer = getSelectedCustomer();
+        const grossTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0)
+            - cart.reduce((sum, item) => sum + Number(item.discount), 0)
+            + Number(taxAmount.value || 0);
+        const redeemedPoints = getRedeemedPoints(selectedCustomer, grossTotal);
+
+        const payload = {
+            customerId: customerId.value,
+            isWalkInCustomer: selectedCustomer ? selectedCustomer.isWalkIn : true,
+            paymentMethod: Number(paymentMethodMap[paymentMethod.value]),
+            taxAmount: Number(taxAmount.value || 0),
+            redeemedLoyaltyPoints: redeemedPoints,
+            useMaxLoyaltyPoints: useMaxPoints.checked,
+            notes: document.getElementById('checkoutNotes').value,
+            payment: {
+                cashAmount: Number(cashAmount.value || 0),
+                cardAmount: Number(cardAmount.value || 0),
+                fundTransferAmount: Number(fundTransferAmount.value || 0),
+                cardReference: cardReference.value,
+                transferReferenceNo: transferReferenceNo.value,
+                transferProvider: transferProvider.value
+            },
+            items: cart.map(item => ({
+                productId: item.id,
+                quantity: item.quantity,
+                discountAmount: item.discount
+            }))
+        };
+
+        const response = await fetch('@Url.Action("Checkout", "Pos")', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': antiForgeryToken
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.succeeded) {
+            alert(result.message || 'Unable to complete sale.');
+            return;
+        }
+
+        lastInvoiceUrl = result.redirectUrl;
+        window.location.href = result.redirectUrl;
+    });
+
+    printInvoiceBtn.addEventListener('click', () => {
+        if (!lastInvoiceUrl) {
+            alert('Complete a sale first to open the e-bill.');
+            return;
+        }
+
+        window.open(lastInvoiceUrl, '_blank');
+    });
+
+    updateCustomerSummary();
+    updatePaymentSections();
+    renderCart();
+</script>
+}

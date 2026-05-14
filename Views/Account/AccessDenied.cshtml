@@ -1,0 +1,16 @@
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = "Access Denied";
+}
+
+<div class="container py-5">
+    <div class="modern-card shadow-soft mx-auto p-5 text-center" style="max-width: 700px;">
+        <div class="display-4 text-warning mb-3"><i class="bi bi-shield-lock-fill"></i></div>
+        <h2 class="fw-bold mb-3">You do not have permission to open this module</h2>
+        <p class="text-secondary mb-4">Form access is controlled by role permissions. Contact an administrator if you need additional access.</p>
+        <div class="d-flex justify-content-center gap-3">
+            <a asp-controller="Pos" asp-action="Index" class="btn btn-primary">Open POS Billing</a>
+            <a asp-controller="Dashboard" asp-action="Index" class="btn btn-outline-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+</div>

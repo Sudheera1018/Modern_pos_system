@@ -1,0 +1,56 @@
+@model ReportsPageViewModel
+@{
+    ViewData["Title"] = "Reports";
+}
+
+<div class="modern-card p-4 mb-4">
+    <div class="section-header">
+        <div>
+            <h2 class="section-title">Reports Center</h2>
+            <p class="section-subtitle">Review sales, stock, purchases, and cashier performance. Export to Excel or PDF.</p>
+        </div>
+    </div>
+
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-lg-3"><label class="form-label">From Date</label><input asp-for="Filter.FromDate" class="form-control" /></div>
+        <div class="col-lg-3"><label class="form-label">To Date</label><input asp-for="Filter.ToDate" class="form-control" /></div>
+        <div class="col-lg-3">
+            <label class="form-label">Cashier</label>
+            <select asp-for="Filter.CashierUserId" class="form-select" asp-items="@(new SelectList(Model.Filter.Cashiers, "Id", "Name"))">
+                <option value="">All Cashiers</option>
+            </select>
+        </div>
+        <div class="col-lg-3">
+            <label class="form-label">Product</label>
+            <select asp-for="Filter.ProductId" class="form-select" asp-items="@(new SelectList(Model.Filter.Products, "Id", "Name"))">
+                <option value="">All Products</option>
+            </select>
+        </div>
+        <div class="col-12 d-flex gap-2">
+            <button class="btn btn-primary">Refresh Reports</button>
+            <a asp-action="ExportExcel" asp-route-FromDate="@Model.Filter.FromDate?.ToString("yyyy-MM-dd")" asp-route-ToDate="@Model.Filter.ToDate?.ToString("yyyy-MM-dd")" asp-route-CashierUserId="@Model.Filter.CashierUserId" asp-route-ProductId="@Model.Filter.ProductId" class="btn btn-outline-secondary">Export Excel</a>
+            <a asp-action="ExportPdf" asp-route-FromDate="@Model.Filter.FromDate?.ToString("yyyy-MM-dd")" asp-route-ToDate="@Model.Filter.ToDate?.ToString("yyyy-MM-dd")" asp-route-CashierUserId="@Model.Filter.CashierUserId" asp-route-ProductId="@Model.Filter.ProductId" class="btn btn-outline-secondary">Export PDF</a>
+        </div>
+    </form>
+</div>
+
+<div class="report-grid">
+    @foreach (var block in Model.Reports)
+    {
+        <div class="modern-card p-4">
+            <h3 class="section-title">@block.Title</h3>
+            <p class="section-subtitle mb-3">@block.Description</p>
+            <div class="table-responsive">
+                <table class="table table-modern mb-0">
+                    <thead><tr><th>Label</th><th>Secondary</th><th>Qty</th><th>Amount</th></tr></thead>
+                    <tbody>
+                    @foreach (var row in block.Rows)
+                    {
+                        <tr><td>@row.Label</td><td>@row.SecondaryLabel</td><td>@row.Quantity</td><td>@row.Amount.ToString("C")</td></tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</div>

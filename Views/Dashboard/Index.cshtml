@@ -1,0 +1,161 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="dashboard-grid mb-4">
+    @foreach (var card in Model.Cards)
+    {
+        <div class="modern-card summary-card @card.AccentClass">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <p class="text-secondary mb-2">@card.Title</p>
+                    <div class="card-stat">@card.Value</div>
+                    <small class="text-secondary">@card.Subtitle</small>
+                </div>
+                <div class="icon-box"><i class="@card.Icon"></i></div>
+            </div>
+        </div>
+    }
+</div>
+
+<div class="row g-4">
+    <div class="col-12 col-xl-8">
+        <div class="modern-card p-4 h-100">
+            <div class="section-header">
+                <div>
+                    <h3 class="section-title">Daily Sales Trend</h3>
+                    <p class="section-subtitle">Revenue movement across the last seven days.</p>
+                </div>
+            </div>
+            <canvas id="salesTrendChart" height="120"></canvas>
+        </div>
+    </div>
+    <div class="col-12 col-xl-4">
+        <div class="modern-card p-4 h-100">
+            <div class="section-header">
+                <div>
+                    <h3 class="section-title">Top Selling Products</h3>
+                    <p class="section-subtitle">Best-performing items by quantity and revenue.</p>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-modern mb-0">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Qty</th>
+                            <th>Revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var item in Model.TopSellingProducts)
+                    {
+                        <tr>
+                            <td>@item.ProductName</td>
+                            <td>@item.QuantitySold</td>
+                            <td>@item.Revenue.ToString("C")</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-6">
+        <div class="modern-card p-4 h-100">
+            <div class="section-header">
+                <div>
+                    <h3 class="section-title">Low Stock Alerts</h3>
+                    <p class="section-subtitle">Products approaching reorder level.</p>
+                </div>
+                <a asp-controller="Inventory" asp-action="Index" class="btn btn-outline-secondary btn-sm">Open Inventory</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-modern mb-0">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Code</th>
+                            <th>Stock</th>
+                            <th>Reorder</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var item in Model.LowStockProducts)
+                    {
+                        <tr>
+                            <td>@item.ProductName</td>
+                            <td>@item.ProductCode</td>
+                            <td>@item.CurrentStock</td>
+                            <td>@item.ReorderLevel</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-6">
+        <div class="modern-card p-4 h-100">
+            <div class="section-header">
+                <div>
+                    <h3 class="section-title">Recent Sales</h3>
+                    <p class="section-subtitle">Latest invoices completed by the team.</p>
+                </div>
+                <a asp-controller="SalesHistory" asp-action="Index" class="btn btn-outline-secondary btn-sm">View All Sales</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-modern mb-0">
+                    <thead>
+                        <tr>
+                            <th>Invoice</th>
+                            <th>Customer</th>
+                            <th>Cashier</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var item in Model.RecentSales)
+                    {
+                        <tr>
+                            <td>@item.InvoiceNo</td>
+                            <td>@item.CustomerName</td>
+                            <td>@item.CashierName</td>
+                            <td>@item.GrandTotal.ToString("C")</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    const salesTrendChart = document.getElementById('salesTrendChart');
+    new Chart(salesTrendChart, {
+        type: 'line',
+        data: {
+            labels: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DailySalesTrend.Select(x => x.Label))),
+            datasets: [{
+                label: 'Sales',
+                data: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.DailySalesTrend.Select(x => x.Value))),
+                borderColor: '#2563eb',
+                backgroundColor: 'rgba(37, 99, 235, 0.12)',
+                fill: true,
+                tension: 0.35
+            }]
+        },
+        options: {
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+</script>
+}

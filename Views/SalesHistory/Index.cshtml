@@ -1,0 +1,45 @@
+@model SalesHistoryPageViewModel
+@{
+    ViewData["Title"] = "Sales History";
+}
+
+<div class="modern-card p-4">
+    <div class="section-header">
+        <div>
+            <h2 class="section-title">Completed Sales</h2>
+            <p class="section-subtitle">Search invoices and review cashier performance over time.</p>
+        </div>
+    </div>
+
+    <form method="get" class="row g-3 mb-4">
+        <div class="col-lg-3"><input asp-for="InvoiceNo" class="form-control" placeholder="Invoice number" /></div>
+        <div class="col-lg-3"><input asp-for="FromDate" class="form-control" /></div>
+        <div class="col-lg-3"><input asp-for="ToDate" class="form-control" /></div>
+        <div class="col-lg-3">
+            <select asp-for="CashierUserId" class="form-select" asp-items="@(new SelectList(Model.Cashiers, "Id", "Name"))">
+                <option value="">All Cashiers</option>
+            </select>
+        </div>
+        <div class="col-12"><button class="btn btn-outline-secondary">Apply Filters</button></div>
+    </form>
+
+    <div class="table-responsive">
+        <table class="table table-modern mb-0">
+            <thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th>Cashier</th><th>Payment</th><th>Total</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var item in Model.Sales)
+            {
+                <tr>
+                    <td>@item.InvoiceNo</td>
+                    <td>@item.SaleDate.ToString("dd MMM yyyy HH:mm")</td>
+                    <td>@item.CustomerName</td>
+                    <td>@item.CashierName</td>
+                    <td>@item.PaymentMethod</td>
+                    <td>@item.GrandTotal.ToString("C")</td>
+                    <td class="text-end"><a asp-action="Invoice" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">View Invoice</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

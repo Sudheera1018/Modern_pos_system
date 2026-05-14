@@ -14,7 +14,7 @@ __pycache__/
 *.pyd
 
 # Large local ML assets
-ML Model/
+#ML Model/
 Report/
 
 # Test and coverage outputs

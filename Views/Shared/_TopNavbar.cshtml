@@ -1,0 +1,33 @@
+@using ModernPosSystem.Helpers
+@inject ICurrentUserContext CurrentUser
+
+<header class="top-navbar">
+    <div class="d-flex align-items-center gap-3">
+        <button type="button" class="btn btn-icon d-lg-none" id="sidebarToggle">
+            <i class="bi bi-list"></i>
+        </button>
+        <div>
+            <p class="page-eyebrow mb-1">Research-grade retail control center</p>
+            <h1 class="page-title mb-0">@ViewData["Title"]</h1>
+        </div>
+    </div>
+    <div class="topbar-meta">
+        <div class="brand-chip">
+            <i class="bi bi-shop"></i>
+            <span>Modern POS Research Lab</span>
+        </div>
+        <div class="user-chip">
+            <div class="user-chip-copy">
+                <div class="fw-semibold">@CurrentUser.FullName</div>
+                <small class="text-secondary">@CurrentUser.RoleName</small>
+            </div>
+            <form asp-controller="Account" asp-action="Logout" method="post" class="logout-form">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-sm btn-logout">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>Logout</span>
+                </button>
+            </form>
+        </div>
+    </div>
+</header>

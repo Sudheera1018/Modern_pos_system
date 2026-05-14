@@ -1,0 +1,43 @@
+@model List<ModernPosSystem.ViewModels.SidebarMenuItemViewModel>
+
+<!-- Sidebar Toggle Button -->
+<button class="sidebar-toggle-btn" id="sidebarCollapseBtn" title="Toggle sidebar" aria-label="Toggle Sidebar">
+    <i class="bi bi-layout-sidebar-reverse sidebar-toggle-icon"></i>
+</button>
+
+<!-- Brand -->
+<div class="sidebar-brand">
+    <div class="brand-mark">
+        <img src="~/images/brand/modern-pos-logo-small.png" alt="Modern POS logo" class="brand-logo-img" asp-append-version="true" />
+    </div>
+    <div class="sidebar-brand-text">
+        <span class="sidebar-brand-name">Modern POS</span>
+        <span class="sidebar-brand-sub">Retail intelligence</span>
+    </div>
+</div>
+
+<!-- Nav -->
+<nav class="sidebar-nav" id="sidebarNav">
+    @foreach (var item in Model)
+    {
+        <a href="@item.Route" class="sidebar-link @(item.IsActive ? "active" : "")" title="@item.Name">
+            <span class="sidebar-link-icon"><i class="@item.Icon"></i></span>
+            <span class="sidebar-link-label">@item.Name</span>
+            @if (item.IsActive)
+            {
+                <span class="sidebar-active-dot"></span>
+            }
+        </a>
+    }
+</nav>
+
+<!-- Footer -->
+<div class="sidebar-footer">
+    <div class="sidebar-footer-card">
+        <div class="sidebar-footer-icon"><i class="bi bi-cpu-fill"></i></div>
+        <div class="sidebar-footer-text">
+            <span class="sidebar-footer-badge">AI Ready</span>
+            <p class="sidebar-footer-desc">ML service hooks prepared.</p>
+        </div>
+    </div>
+</div>

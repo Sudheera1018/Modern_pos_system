@@ -1,0 +1,22 @@
+@model ModernPosSystem.Models.ErrorViewModel
+@{
+    ViewData["Title"] = "System Error";
+}
+
+<div class="container py-5">
+    <div class="card modern-card shadow-soft mx-auto" style="max-width: 720px;">
+        <div class="card-body p-5 text-center">
+            <div class="display-5 mb-3 text-danger"><i class="bi bi-bug-fill"></i></div>
+            <h2 class="mb-3">Something interrupted the request</h2>
+            <p class="text-secondary mb-4">The system captured the error and kept the application running. Please retry the action or return to the POS dashboard.</p>
+            @if (!string.IsNullOrWhiteSpace(Model?.RequestId))
+            {
+                <p class="small text-muted mb-4">Trace ID: @Model.RequestId</p>
+            }
+            <div class="d-flex justify-content-center gap-3">
+                <a asp-controller="Pos" asp-action="Index" class="btn btn-primary">Go to POS Billing</a>
+                <a asp-controller="Dashboard" asp-action="Index" class="btn btn-outline-secondary">Open Dashboard</a>
+            </div>
+        </div>
+    </div>
+</div>

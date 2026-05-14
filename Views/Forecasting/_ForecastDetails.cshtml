@@ -1,0 +1,87 @@
+@model ForecastDetailViewModel
+
+<div class="forecast-detail-shell">
+    <div class="detail-hero">
+        <div>
+            <div class="detail-eyebrow">Forecast detail</div>
+            <h4 class="mb-1">@Model.ProductName</h4>
+            <div class="text-secondary">@Model.ProductCode</div>
+        </div>
+        <div class="detail-badge-group">
+            <span class="badge-soft badge-instock">@Model.ConfidenceLabel confidence</span>
+            <span class="badge-soft @(Model.IsSlowMoving ? "badge-low" : "badge-instock")">@(Model.IsSlowMoving ? "Slow moving" : "Demand healthy")</span>
+        </div>
+    </div>
+
+    <div class="detail-metrics">
+        <div class="detail-metric">
+            <small>Current stock</small>
+            <strong>@Model.CurrentStock.ToString("N0")</strong>
+        </div>
+        <div class="detail-metric">
+            <small>Average recent sales</small>
+            <strong>@Model.AverageRecentDailySales.ToString("N2")</strong>
+        </div>
+        <div class="detail-metric">
+            <small>Predicted next day</small>
+            <strong>@Model.PredictedNextDaySales.ToString("N2")</strong>
+        </div>
+        <div class="detail-metric">
+            <small>Predicted next 7 days</small>
+            <strong>@Model.PredictedNext7DaysTotal.ToString("N2")</strong>
+        </div>
+        <div class="detail-metric">
+            <small>Suggested reorder</small>
+            <strong>@Model.ReorderSuggestedQuantity.ToString("N0")</strong>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+            <div class="detail-callout">
+                <h6>Reorder reasoning</h6>
+                <p class="mb-0">@Model.ReorderExplanation</p>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="detail-callout">
+                <h6>Slow-moving reasoning</h6>
+                <p class="mb-0">@Model.SlowMovingExplanation</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-responsive mb-3">
+        <table class="table table-modern align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Predicted Quantity</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var point in Model.DailyForecasts)
+            {
+                <tr>
+                    <td>@point.Date.ToString("ddd, dd MMM")</td>
+                    <td>@point.PredictedQuantity.ToString("N2")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+
+    <div class="modern-card p-3 mb-3">
+        <canvas id="forecastDetailChart"
+                height="180"
+                data-labels="@string.Join("|", Model.DailyForecasts.Select(x => x.Date.ToString("dd MMM")))"
+                data-values="@string.Join("|", Model.DailyForecasts.Select(x => x.PredictedQuantity.ToString(System.Globalization.CultureInfo.InvariantCulture)))"></canvas>
+    </div>
+
+    @if (Model.Warnings.Count > 0)
+    {
+        <div class="alert alert-warning mb-0">
+            <strong>Forecast warnings:</strong> @string.Join(" ", Model.Warnings)
+        </div>
+    }
+</div>

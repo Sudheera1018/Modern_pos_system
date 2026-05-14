@@ -1,0 +1,369 @@
+@model ForecastingPageViewModel
+@using System.Text.Json
+@{
+    ViewData["Title"] = "Forecasting";
+    var topDemandJson = JsonSerializer.Serialize(Model.TopDemandChart);
+    var reorderJson = JsonSerializer.Serialize(Model.ReorderChart);
+    var slowMovingJson = JsonSerializer.Serialize(Model.SlowMovingChart);
+    var categoryJson = JsonSerializer.Serialize(Model.CategoryDemandChart);
+}
+
+<div class="forecast-shell">
+    <div class="forecast-toolbar modern-card p-4 mb-4">
+        <div class="section-header align-items-start mb-3">
+            <div>
+                <h2 class="section-title mb-1">Demand Forecasting</h2>
+                <p class="section-subtitle mb-0">Generate XGBoost-based demand forecasts from daily POS sales history and convert them into reorder intelligence.</p>
+            </div>
+            <div class="status-pill @(Model.ServiceHealthy ? "status-pill-success" : "status-pill-warning")">
+                <i class="bi @(Model.ServiceHealthy ? "bi-cloud-check" : "bi-cloud-slash")"></i>
+                <span>@Model.ServiceStatus</span>
+            </div>
+        </div>
+
+        <form method="get" asp-action="Index" class="row g-3 forecast-filter-bar">
+            <div class="col-md-3">
+                <label class="form-label">Store</label>
+                <select name="StoreId" class="form-select">
+                    @foreach (var option in Model.StoreOptions)
+                    {
+                        if (option.Id == Model.Filter.StoreId)
+                        {
+                            <option value="@option.Id" selected>@option.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@option.Id">@option.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Forecast Date</label>
+                <input name="ForecastDate" class="form-control" type="date" value="@Model.Filter.ForecastDate.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Category</label>
+                <select name="CategoryId" class="form-select">
+                    <option value="">All Categories</option>
+                    @foreach (var option in Model.CategoryOptions)
+                    {
+                        if (option.Id == Model.Filter.CategoryId)
+                        {
+                            <option value="@option.Id" selected>@option.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@option.Id">@option.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Product</label>
+                <select name="ProductId" class="form-select">
+                    <option value="">All Products</option>
+                    @foreach (var option in Model.ProductOptions)
+                    {
+                        if (option.Id == Model.Filter.ProductId)
+                        {
+                            <option value="@option.Id" selected>@option.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@option.Id">@option.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Reorder Status</label>
+                <select name="ReorderStatus" class="form-select">
+                    @if (string.IsNullOrWhiteSpace(Model.Filter.ReorderStatus))
+                    {
+                        <option value="" selected>All Statuses</option>
+                    }
+                    else
+                    {
+                        <option value="">All Statuses</option>
+                    }
+
+                    @if (Model.Filter.ReorderStatus == "Healthy")
+                    {
+                        <option value="Healthy" selected>Healthy</option>
+                    }
+                    else
+                    {
+                        <option value="Healthy">Healthy</option>
+                    }
+
+                    @if (Model.Filter.ReorderStatus == "ReorderNow")
+                    {
+                        <option value="ReorderNow" selected>Reorder Now</option>
+                    }
+                    else
+                    {
+                        <option value="ReorderNow">Reorder Now</option>
+                    }
+
+                    @if (Model.Filter.ReorderStatus == "Critical")
+                    {
+                        <option value="Critical" selected>Critical</option>
+                    }
+                    else
+                    {
+                        <option value="Critical">Critical</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <div class="form-check form-switch">
+                    <input name="SlowMovingOnly" value="true" class="form-check-input" type="checkbox" @(Model.Filter.SlowMovingOnly ? "checked" : null) />
+                    <label class="form-check-label">Slow-moving only</label>
+                </div>
+            </div>
+            <div class="col-md-6 d-flex align-items-end justify-content-end">
+                <button class="btn btn-outline-secondary">Apply Filters</button>
+            </div>
+        </form>
+
+        <div class="forecast-actions mt-3">
+            <form asp-action="Generate" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="StoreId" value="@Model.Filter.StoreId" />
+                <input type="hidden" name="ForecastDate" value="@Model.Filter.ForecastDate.ToString("yyyy-MM-dd")" />
+                <input type="hidden" name="CategoryId" value="@Model.Filter.CategoryId" />
+                <input type="hidden" name="ProductId" value="@Model.Filter.ProductId" />
+                <input type="hidden" name="ReorderStatus" value="@Model.Filter.ReorderStatus" />
+                <input type="hidden" name="SlowMovingOnly" value="@Model.Filter.SlowMovingOnly.ToString().ToLowerInvariant()" />
+                <button class="btn btn-primary"><i class="bi bi-lightning-charge me-2"></i>Generate Forecast</button>
+            </form>
+            <form asp-action="Refresh" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="StoreId" value="@Model.Filter.StoreId" />
+                <input type="hidden" name="ForecastDate" value="@Model.Filter.ForecastDate.ToString("yyyy-MM-dd")" />
+                <input type="hidden" name="CategoryId" value="@Model.Filter.CategoryId" />
+                <input type="hidden" name="ProductId" value="@Model.Filter.ProductId" />
+                <input type="hidden" name="ReorderStatus" value="@Model.Filter.ReorderStatus" />
+                <input type="hidden" name="SlowMovingOnly" value="@Model.Filter.SlowMovingOnly.ToString().ToLowerInvariant()" />
+                <button class="btn btn-outline-secondary"><i class="bi bi-arrow-repeat me-2"></i>Refresh Forecast</button>
+            </form>
+            <form asp-action="GenerateProduct" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="StoreId" value="@Model.Filter.StoreId" />
+                <input type="hidden" name="ForecastDate" value="@Model.Filter.ForecastDate.ToString("yyyy-MM-dd")" />
+                <input type="hidden" name="CategoryId" value="@Model.Filter.CategoryId" />
+                <input type="hidden" name="ProductId" value="@Model.Filter.ProductId" />
+                <input type="hidden" name="ReorderStatus" value="@Model.Filter.ReorderStatus" />
+                <input type="hidden" name="SlowMovingOnly" value="@Model.Filter.SlowMovingOnly.ToString().ToLowerInvariant()" />
+                <button class="btn btn-outline-primary"><i class="bi bi-bullseye me-2"></i>Forecast Selected Product</button>
+            </form>
+        </div>
+
+        <div class="forecast-run-note mt-3">
+            <i class="bi bi-info-circle"></i>
+            <span>
+                Forecasts now run automatically once per day for the main store and can still be refreshed manually. The page shows the last saved forecast for the selected store and date after the system aggregates daily POS sales history, sends that history to the ML service, and stores the returned predictions in MongoDB. Use <strong>Generate Forecast</strong> or <strong>Refresh Forecast</strong> any time you want an on-demand update.
+            </span>
+        </div>
+
+        <div class="forecast-run-meta mt-3">
+            <div class="run-meta-chip">
+                <span class="run-meta-label">Auto Run</span>
+                <strong>@(Model.AutoRunEnabled ? "Enabled" : "Disabled")</strong>
+            </div>
+            <div class="run-meta-chip">
+                <span class="run-meta-label">Last Auto Forecast</span>
+                <strong>@(Model.LastAutoGeneratedAt.HasValue ? Model.LastAutoGeneratedAt.Value.ToLocalTime().ToString("dd MMM yyyy HH:mm") : "Not generated yet")</strong>
+            </div>
+            <div class="run-meta-chip">
+                <span class="run-meta-label">Last Manual Refresh</span>
+                <strong>@(Model.LastManualGeneratedAt.HasValue ? Model.LastManualGeneratedAt.Value.ToLocalTime().ToString("dd MMM yyyy HH:mm") : "Not generated yet")</strong>
+            </div>
+            <div class="run-meta-chip">
+                <span class="run-meta-label">Next Scheduled Run</span>
+                <strong>@(Model.NextScheduledRunAt.HasValue ? Model.NextScheduledRunAt.Value.ToString("dd MMM yyyy HH:mm") : "Not scheduled")</strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-grid mb-4">
+        @foreach (var card in Model.Cards)
+        {
+            <div class="modern-card summary-card @card.AccentClass">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="text-secondary mb-2">@card.Title</p>
+                        <div class="card-stat">@card.Value</div>
+                        <small class="text-secondary">@card.Subtitle</small>
+                    </div>
+                    <div class="icon-box"><i class="@card.Icon"></i></div>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="forecast-results-summary modern-card p-4 mb-4">
+        <div class="section-header align-items-start">
+            <div>
+                <h3 class="section-title mb-1">Forecast Results</h3>
+                <p class="section-subtitle mb-0">Saved forecasts for @Model.Filter.ForecastDate.ToString("dd MMM yyyy") ready to review in a larger popup view.</p>
+            </div>
+            <button type="button"
+                    class="btn btn-primary"
+                    data-bs-toggle="modal"
+                    data-bs-target="#forecastResultsModal">
+                <i class="bi bi-table me-2"></i>View Forecast Results
+            </button>
+        </div>
+
+        <div class="forecast-results-summary-grid mt-3">
+            <div class="run-meta-chip">
+                <span class="run-meta-label">Selected Date</span>
+                <strong>@Model.Filter.ForecastDate.ToString("dd MMM yyyy")</strong>
+            </div>
+            <div class="run-meta-chip">
+                <span class="run-meta-label">Visible Forecast Rows</span>
+                <strong>@Model.Results.Count</strong>
+            </div>
+            <div class="run-meta-chip">
+                <span class="run-meta-label">Last Generated</span>
+                <strong>@(Model.LastGeneratedAt.HasValue ? Model.LastGeneratedAt.Value.ToLocalTime().ToString("dd MMM yyyy HH:mm") : "Not generated yet")</strong>
+            </div>
+        </div>
+
+        @if (TempData["ForecastGeneratedMessage"] is string forecastGeneratedMessage)
+        {
+            <div class="alert alert-warning mt-3 mb-0" role="alert">
+                @forecastGeneratedMessage
+            </div>
+        }
+    </div>
+
+    <div class="row g-4 mb-4">
+        <div class="col-12 col-xl-6">
+            <div class="modern-card p-4 h-100">
+                <div class="chart-header">
+                    <div>
+                        <h3 class="section-title mb-1">Top Products by Predicted Next 7 Days</h3>
+                        <p class="section-subtitle mb-0">Highest projected demand among generated forecasts.</p>
+                    </div>
+                </div>
+                @if (Model.TopDemandChart.Count == 0)
+                {
+                    <div class="chart-empty-state">No forecast data yet. Generate forecasts to see top-demand products.</div>
+                }
+                else
+                {
+                    <div class="forecast-chart-wrap forecast-chart-wrap-lg">
+                        <canvas class="forecast-chart"
+                                data-chart-type="bar"
+                                data-chart-title="Next 7 Day Demand"
+                                data-chart-series='@Html.Raw(topDemandJson)'></canvas>
+                    </div>
+                }
+            </div>
+        </div>
+        <div class="col-12 col-xl-6">
+            <div class="modern-card p-4 h-100">
+                <div class="chart-header">
+                    <div>
+                        <h3 class="section-title mb-1">Products Needing Reorder</h3>
+                        <p class="section-subtitle mb-0">Products where predicted demand exceeds current stock plus safety stock.</p>
+                    </div>
+                </div>
+                @if (Model.ReorderChart.Count == 0)
+                {
+                    <div class="chart-empty-state">No reorder signals for the current filter.</div>
+                }
+                else
+                {
+                    <div class="forecast-chart-wrap forecast-chart-wrap-lg">
+                        <canvas class="forecast-chart"
+                                data-chart-type="bar"
+                                data-chart-title="Suggested Reorder Quantity"
+                                data-chart-series='@Html.Raw(reorderJson)'></canvas>
+                    </div>
+                }
+            </div>
+        </div>
+        <div class="col-12 col-xl-6">
+            <div class="modern-card p-4 h-100">
+                <div class="chart-header">
+                    <div>
+                        <h3 class="section-title mb-1">Slow-Moving Products</h3>
+                        <p class="section-subtitle mb-0">High-stock items with low predicted short-term demand.</p>
+                    </div>
+                </div>
+                @if (Model.SlowMovingChart.Count == 0)
+                {
+                    <div class="chart-empty-state">No slow-moving items for the current filter.</div>
+                }
+                else
+                {
+                    <div class="forecast-chart-wrap forecast-chart-wrap-lg">
+                        <canvas class="forecast-chart"
+                                data-chart-type="bar"
+                                data-chart-title="Current Stock on Slow-Moving Products"
+                                data-chart-series='@Html.Raw(slowMovingJson)'></canvas>
+                    </div>
+                }
+            </div>
+        </div>
+        <div class="col-12 col-xl-6">
+            <div class="modern-card p-4 h-100">
+                <div class="chart-header">
+                    <div>
+                        <h3 class="section-title mb-1">Predicted Demand by Category</h3>
+                        <p class="section-subtitle mb-0">Category-level demand split for the selected forecast date.</p>
+                    </div>
+                </div>
+                @if (Model.CategoryDemandChart.Count == 0)
+                {
+                    <div class="chart-empty-state">No category demand data yet.</div>
+                }
+                else
+                {
+                    <div class="forecast-chart-wrap forecast-chart-wrap-lg">
+                        <canvas class="forecast-chart"
+                                data-chart-type="doughnut"
+                                data-chart-title="Demand by Category"
+                                data-chart-series='@Html.Raw(categoryJson)'></canvas>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="forecastResultsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable forecast-results-modal">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <div>
+                    <h3 class="section-title mb-1">Forecast Results</h3>
+                    <p class="section-subtitle mb-0">Detailed results for @Model.Filter.ForecastDate.ToString("dd MMM yyyy").</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-3">
+                <partial name="_ForecastResultsTable" model="Model" />
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="forecastDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body pt-0" id="forecastDetailContainer">
+                <div class="forecast-loading-state">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

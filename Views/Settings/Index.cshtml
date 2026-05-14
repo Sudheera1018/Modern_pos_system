@@ -1,0 +1,25 @@
+@model List<AppSetting>
+@{
+    ViewData["Title"] = "Settings";
+}
+
+<div class="modern-card p-4">
+    <div class="section-header">
+        <div>
+            <h2 class="section-title">System Settings</h2>
+            <p class="section-subtitle">Configuration values and extension points prepared for future enhancement.</p>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-modern mb-0">
+            <thead><tr><th>Key</th><th>Value</th><th>Description</th></tr></thead>
+            <tbody>
+            @foreach (var item in Model)
+            {
+                <tr><td>@item.Key</td><td>@item.Value</td><td>@item.Description</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

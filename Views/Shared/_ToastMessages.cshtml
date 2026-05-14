@@ -1,0 +1,26 @@
+@{
+    var toastType = TempData["Toast.Type"]?.ToString();
+    var toastMessage = TempData["Toast.Message"]?.ToString();
+    var icon = toastType switch
+    {
+        "success" => "bi bi-check-circle-fill",
+        "error" => "bi bi-exclamation-octagon-fill",
+        "warning" => "bi bi-exclamation-triangle-fill",
+        _ => "bi bi-info-circle-fill"
+    };
+}
+
+@if (!string.IsNullOrWhiteSpace(toastMessage))
+{
+    <div class="toast-shell">
+        <div class="toast align-items-center show pos-toast toast-@toastType" role="alert">
+            <div class="d-flex align-items-center">
+                <div class="toast-body d-flex align-items-center gap-2">
+                    <i class="@icon"></i>
+                    <span>@toastMessage</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+}

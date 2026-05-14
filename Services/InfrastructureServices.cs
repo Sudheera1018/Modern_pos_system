@@ -1,0 +1,147 @@
+using CloudinaryDotNet;
+using CloudinaryDotNet.Actions;
+using Microsoft.Extensions.Options;
+using ModernPosSystem.Configurations;
+using ModernPosSystem.DTOs;
+using ModernPosSystem.Helpers;
+using ModernPosSystem.Models;
+using ModernPosSystem.Repositories;
+
+namespace ModernPosSystem.Services;
+
+public class CloudinaryImageStorageService(
+    IOptions<CloudinaryOptions> options,
+    ILogger<CloudinaryImageStorageService> logger) : IImageStorageService
+{
+    private readonly CloudinaryOptions _options = options.Value;
+
+    public async Task<ServiceResult<string>> UploadProductImageAsync(IFormFile file, CancellationToken cancellationToken = default)
+    {
+        if (file.Length <= 0)
+        {
+            return ServiceResult<string>.Failure("Select a valid image file.");
+        }
+
+        if (string.IsNullOrWhiteSpace(_options.CloudName) ||
+            string.IsNullOrWhiteSpace(_options.ApiKey) ||
+            string.IsNullOrWhiteSpace(_options.ApiSecret))
+        {
+            return ServiceResult<string>.Failure("Cloudinary is not configured. Add Cloudinary secrets before uploading product images.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(file.ContentType) && !file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+        {
+            return ServiceResult<string>.Failure("Only image uploads are supported.");
+        }
+
+        var account = new Account(_options.CloudName, _options.ApiKey, _options.ApiSecret);
+        var cloudinary = new Cloudinary(account);
+
+        try
+        {
+            await using var stream = file.OpenReadStream();
+            var uploadParams = new ImageUploadParams
+            {
+                File = new FileDescription(file.FileName, stream),
+                Folder = _options.Folder,
+                UseFilename = true,
+                UniqueFilename = true,
+                Overwrite = false
+            };
+
+            var response = await cloudinary.UploadAsync(uploadParams, cancellationToken);
+            if (response.Error is not null)
+            {
+                logger.LogWarning("Cloudinary upload failed: {Message}", response.Error.Message);
+                return ServiceResult<string>.Failure("Product image upload failed. Please try again.");
+            }
+
+            return string.IsNullOrWhiteSpace(response.SecureUrl?.AbsoluteUri)
+                ? ServiceResult<string>.Failure("Cloudinary did not return an image URL.")
+                : ServiceResult<string>.Success(response.SecureUrl.AbsoluteUri);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Product image upload to Cloudinary failed.");
+            return ServiceResult<string>.Failure("Unable to upload the image right now.");
+        }
+    }
+}
+
+public class ForecastSchedulerHostedService(
+    IServiceScopeFactory scopeFactory,
+    IOptions<ForecastingOptions> options,
+    ILogger<ForecastSchedulerHostedService> logger) : BackgroundService
+{
+    private readonly ForecastingOptions _options = options.Value;
+    private readonly DateTime _startedAtLocal = DateTime.Now;
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        if (!_options.AutoRunEnabled)
+        {
+            logger.LogInformation("Forecast auto-run is disabled.");
+            return;
+        }
+
+        logger.LogInformation("Forecast auto-run scheduler started. Local run time: {RunTime}.", _options.AutoRunLocalTime);
+
+        await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
+        await TryRunScheduledForecastAsync(stoppingToken);
+
+        using var timer = new PeriodicTimer(TimeSpan.FromMinutes(Math.Max(1, _options.AutoRunCheckIntervalMinutes)));
+        while (!stoppingToken.IsCancellationRequested && await timer.WaitForNextTickAsync(stoppingToken))
+        {
+            await TryRunScheduledForecastAsync(stoppingToken);
+        }
+    }
+
+    private async Task TryRunScheduledForecastAsync(CancellationToken cancellationToken)
+    {
+        if (!TimeSpan.TryParse(_options.AutoRunLocalTime, out var scheduledLocalTime))
+        {
+            logger.LogWarning("Forecast auto-run time '{RunTime}' is invalid. Expected HH:mm:ss format.", _options.AutoRunLocalTime);
+            return;
+        }
+
+        var nowLocal = DateTime.Now;
+        var scheduledToday = nowLocal.Date.Add(scheduledLocalTime);
+        if (nowLocal < scheduledToday)
+        {
+            return;
+        }
+
+        if (!_options.AutoRunOnStartupCatchUp &&
+            _startedAtLocal.Date == nowLocal.Date &&
+            _startedAtLocal > scheduledToday)
+        {
+            return;
+        }
+
+        using var scope = scopeFactory.CreateScope();
+        var settingRepository = scope.ServiceProvider.GetRequiredService<IRepository<AppSetting>>();
+
+        var lastRunDateRaw = (await settingRepository.GetFirstOrDefaultAsync(x => x.IsActive && x.Key == AppSettingKeys.ForecastLastAutoGeneratedDateLocal))?.Value;
+        if (DateOnly.TryParse(lastRunDateRaw, out var lastRunDate) && lastRunDate == DateOnly.FromDateTime(nowLocal))
+        {
+            return;
+        }
+
+        var forecastGenerationService = scope.ServiceProvider.GetRequiredService<IForecastGenerationService>();
+        var result = await forecastGenerationService.GenerateForecastForStoreAsync(new ForecastGenerationRequestDto
+        {
+            StoreId = _options.DefaultStoreId,
+            ForecastDate = nowLocal.Date,
+            GenerationSource = ForecastGenerationSources.Auto
+        }, "system:auto-forecast");
+
+        if (result.Succeeded)
+        {
+            logger.LogInformation("Auto forecast completed for {ForecastDate}: {Message}", nowLocal.Date, result.Message);
+        }
+        else
+        {
+            logger.LogWarning("Auto forecast failed for {ForecastDate}: {Message}", nowLocal.Date, result.Message);
+        }
+    }
+}
