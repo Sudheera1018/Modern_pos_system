@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>8fd7c558-0f18-4f34-a35c-c41289575e8d</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
+    <PackageReference Include="CloudinaryDotNet" Version="1.28.0" />
+    <PackageReference Include="MongoDB.Driver" Version="3.4.0" />
+    <PackageReference Include="QuestPDF" Version="2024.7.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Ignore local verification build folders so their generated static web asset
+         manifests are not picked up as project content on later normal builds. -->
+    <Compile Remove="temp-build-output*/**" />
+    <Content Remove="temp-build-output*/**" />
+    <EmbeddedResource Remove="temp-build-output*/**" />
+    <None Remove="temp-build-output*/**" />
+  </ItemGroup>
+
+</Project>
