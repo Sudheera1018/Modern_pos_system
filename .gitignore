@@ -1,0 +1,31 @@
+bin/
+obj/
+.vs/
+temp-build-output*/
+
+# Local runtime logs
+runtime-logs*/
+
+# Python virtual environments and caches
+ForecastingService/.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Large local ML assets
+ML Model/
+Report/
+
+# Test and coverage outputs
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+coverage.*
+*.lcov
+
+# Local generated scratch files
+*.log
+*.tmp
