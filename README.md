@@ -1,4 +1,7 @@
-# Modern POS System
+# Modern Point of sale web application with forecast-ready architecture for retail demand prediction.
+Name-B.M.S.D Basnayaka
+Plymouth ID-10952628
+Outlook email-10952628@students.plymouth.ac.uk
 
 Modern POS System is a retail-ready ASP.NET Core MVC application with MongoDB Atlas, role-based access control, inventory and billing workflows, reporting, and an integrated ML forecasting module powered by a separate Python FastAPI service with an XGBoost model.
 
